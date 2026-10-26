@@ -16,6 +16,11 @@ impl QueryEngine {
 
     pub(super) fn handle_advisory_locks(&mut self, message: &Message) {
         let locks = self.router.command().route().advisory_locks();
+
+        if locks.is_empty() && message.code() == 'D' {
+            return;
+        }
+
         let row = if message.code() == 'D'
             && !message.streaming()
             && locks

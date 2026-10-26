@@ -216,13 +216,34 @@ impl Stream {
         &mut self,
         message: &impl Protocol,
     ) -> Result<usize, crate::net::Error> {
+        let bytes = message.to_bytes();
+        self.send_bytes(&bytes).await
+    }
+
+    pub(crate) async fn send_message(
+        &mut self,
+        message: &Message,
+    ) -> Result<usize, crate::net::Error> {
+        self.send_bytes(message.as_bytes()).await
+    }
+
+    pub(crate) async fn send_message_flush(
+        &mut self,
+        message: &Message,
+    ) -> Result<usize, crate::net::Error> {
+        let sent = self.send_message(message).await?;
+        eof(self.flush().await)?;
+        trace!("😳");
+
+        Ok(sent)
+    }
+
+    async fn send_bytes(&mut self, bytes: &[u8]) -> Result<usize, crate::net::Error> {
         self.io_in_progress = true;
         let result = async {
-            let bytes = message.to_bytes();
-
             match &mut self.inner {
-                StreamInner::Plain(stream) => eof(stream.write_all(&bytes).await)?,
-                StreamInner::Tls(stream) => eof(stream.write_all(&bytes).await)?,
+                StreamInner::Plain(stream) => eof(stream.write_all(bytes).await)?,
+                StreamInner::Tls(stream) => eof(stream.write_all(bytes).await)?,
                 StreamInner::DevNull => (),
             }
 
@@ -231,8 +252,8 @@ impl Stream {
                 use crate::net::messages::FromBytes;
                 use tracing::error;
 
-                if message.code() == 'E' {
-                    let error = ErrorResponse::from_bytes(bytes.clone())?;
+                if bytes.first() == Some(&b'E') {
+                    let error = ErrorResponse::from_bytes(bytes::Bytes::copy_from_slice(bytes))?;
                     if !error.message.is_empty() {
                         error!("{:?} <-- {}", self.peer_addr(), error)
                     }

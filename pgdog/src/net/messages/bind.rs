@@ -181,8 +181,19 @@ impl Bind {
 
     /// Rename this Bind message to a different prepared statement.
     pub(crate) fn rename(&mut self, name: impl AsRef<str>) {
-        self.statement = c_string_bytes(name.as_ref());
-        self.original = None;
+        let statement = c_string_bytes(name.as_ref());
+        self.original = self.original.take().map(|original| {
+            let rest = 5 + self.portal.len() + self.statement.len();
+            let len = original.len() - 1 - self.statement.len() + statement.len();
+            let mut payload = bytes::BytesMut::with_capacity(len + 1);
+            payload.put_u8(b'B');
+            payload.put_i32(len as i32);
+            payload.put(&self.portal[..]);
+            payload.put(&statement[..]);
+            payload.put(&original[rest..]);
+            payload.freeze()
+        });
+        self.statement = statement;
     }
 
     /// Make this an anonymous Bind message.

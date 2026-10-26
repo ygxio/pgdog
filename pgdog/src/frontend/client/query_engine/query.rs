@@ -350,9 +350,9 @@ impl QueryEngine {
             trace!("{:#?} >>> {:?}", message, context.stream.peer_addr());
 
             if flush {
-                context.stream.send_flush(&message).await?;
+                context.stream.send_message_flush(&message).await?;
             } else {
-                context.stream.send(&message).await?;
+                context.stream.send_message(&message).await?;
             }
         }
 

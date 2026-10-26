@@ -194,10 +194,14 @@ impl Stats {
 
     /// Record rows affected from a Postgres CommandComplete message.
     pub(crate) fn rows_affected(&mut self, cmd: &CommandComplete) {
+        let tag = cmd.tag();
+        if !matches!(tag, "INSERT" | "UPDATE" | "DELETE" | "COPY") {
+            return;
+        }
         let Ok(Some(rows)) = cmd.rows() else {
             return;
         };
-        match cmd.tag() {
+        match tag {
             "INSERT" => {
                 self.local.total.rows_inserted += rows;
                 self.local.last_checkout.rows_inserted += rows;
@@ -292,6 +296,10 @@ impl Stats {
             self.local.total.query_time += duration;
             self.local.last_checkout.query_time += duration;
         }
+
+        if idle_in_transaction {
+            self.sync_to_shared();
+        }
     }
 
     pub(crate) fn set_timers(&mut self, now: Instant) {
@@ -326,20 +334,18 @@ impl Stats {
         }
     }
 
-    /// Send bytes to server - syncs to shared for real-time visibility.
+    /// Send bytes to server.
     pub(crate) fn send(&mut self, bytes: usize, code: u8) {
         self.local.total.bytes_sent += bytes;
         self.local.last_checkout.bytes_sent += bytes;
         self.local.last_sent = code;
-        self.sync_to_shared();
     }
 
-    /// Receive bytes from server - syncs to shared for real-time visibility.
+    /// Receive bytes from server.
     pub(crate) fn receive(&mut self, bytes: usize, code: u8) {
         self.local.total.bytes_received += bytes;
         self.local.last_checkout.bytes_received += bytes;
         self.local.last_received = code;
-        self.sync_to_shared();
     }
 
     /// Track healthchecks.

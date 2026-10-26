@@ -27,8 +27,8 @@ impl CommandComplete {
     pub(crate) fn rows(&self) -> Result<Option<usize>, Error> {
         Ok(self
             .command()
-            .split(" ")
-            .last()
+            .rsplit(' ')
+            .next()
             .ok_or(Error::CommandCompleteNoRows)?
             .parse()
             .ok())
@@ -37,7 +37,7 @@ impl CommandComplete {
     /// Get command tag.
     pub(crate) fn tag(&self) -> &str {
         // SAFETY: split always returns at least one element.
-        self.command().split(" ").next().unwrap()
+        self.command().split(' ').next().unwrap()
     }
 
     pub(crate) fn command(&self) -> &str {

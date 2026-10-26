@@ -596,6 +596,9 @@ impl Server {
                     // INVARIANT: omni dedup in multi_shard relies on this being process-unique;
                     // never substitute a non-unique value here.
                     let mut message = message.stream(self.streaming).backend(self.id);
+                    if message.code() == 'D' {
+                        break message;
+                    }
                     match self.prepared_statements.forward(&mut message) {
                         Ok(forward) => {
                             if forward {

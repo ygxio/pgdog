@@ -62,6 +62,10 @@ impl PubSubClient {
         });
     }
 
+    pub(crate) fn active(&self) -> bool {
+        !self.unlisten.is_empty()
+    }
+
     /// Wait for a message from the pub/sub channel.
     pub(crate) async fn recv(&mut self) -> Option<NotificationResponse> {
         self.rx.recv().await
