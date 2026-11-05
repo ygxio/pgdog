@@ -621,6 +621,14 @@ pub(crate) fn from_config(config: &ConfigAndUsers) -> Databases {
     let schema_cache = SchemaCache::default();
 
     for user in &config.users.users {
+        if let Some(parent) = &user.virtual_of {
+            warn!(
+                r#"virtual user "{}" of "{}" isn't supported yet, skipping"#,
+                user.name, parent
+            );
+            continue;
+        }
+
         for database in config.config.user_databases(user) {
             let mut user = user.clone();
             // FIXME: this is a hacky way to specify a single database entry
@@ -1325,6 +1333,48 @@ mod tests {
             mirror_config_dest_only.is_none(),
             "Mirror config should not be precomputed when source has no users"
         );
+    }
+
+    #[test]
+    fn test_virtual_user_has_no_pool() {
+        let config = Config {
+            databases: vec![Database {
+                name: "prod".to_string(),
+                host: "localhost".to_string(),
+                port: 5432,
+                role: Role::Primary,
+                ..Default::default()
+            }],
+            ..Default::default()
+        };
+
+        let users = crate::config::Users {
+            users: vec![
+                crate::config::User {
+                    name: "pgdog".to_string(),
+                    database: "prod".to_string(),
+                    password: Some("pass".to_string()),
+                    ..Default::default()
+                },
+                crate::config::User {
+                    name: "user_one".to_string(),
+                    database: "prod".to_string(),
+                    password: Some("pass".to_string()),
+                    virtual_of: Some("pgdog".to_string()),
+                    ..Default::default()
+                },
+            ],
+            ..Default::default()
+        };
+
+        let databases = from_config(&ConfigAndUsers {
+            config,
+            users,
+            ..Default::default()
+        });
+
+        assert!(databases.cluster(("pgdog", "prod")).is_ok());
+        assert!(databases.cluster(("user_one", "prod")).is_err());
     }
 
     #[test]

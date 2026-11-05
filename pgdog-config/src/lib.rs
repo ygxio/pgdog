@@ -26,6 +26,7 @@ pub mod url;
 pub mod users;
 pub mod util;
 pub mod vault;
+pub mod virtual_users;
 
 pub use auth::{AuthType, PassthroughAuth};
 pub use core::{Config, ConfigAndUsers};

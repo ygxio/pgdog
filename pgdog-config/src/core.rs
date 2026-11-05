@@ -120,6 +120,8 @@ impl ConfigAndUsers {
     pub fn check(&mut self) -> Result<(), Error> {
         self.config.check();
         self.users.check(&self.config);
+        self.users.check_virtual()?;
+        self.users.resolve_virtual(&self.config);
         self.validate_server_auth()?;
         self.validate_database_tls()?;
         Ok(())
@@ -1647,6 +1649,42 @@ shard = 0
         let err = config.check().unwrap_err().to_string();
         assert!(err.contains("passthrough_auth"));
         assert!(err.contains("rds_iam"));
+    }
+
+    #[test]
+    fn test_check_rejects_virtual_user_without_parent() {
+        let mut config = ConfigAndUsers::default();
+        config.users.users.push(crate::User {
+            name: "user_one".into(),
+            virtual_of: Some("pgdog".into()),
+            ..Default::default()
+        });
+
+        let err = config.check().unwrap_err().to_string();
+        assert!(err.contains(r#"user "pgdog" in "virtual_of" doesn't exist"#));
+    }
+
+    #[test]
+    fn test_check_resolves_virtual_user_databases() {
+        let mut config = ConfigAndUsers::default();
+        config.users.users.push(crate::User {
+            name: "pgdog".into(),
+            database: "prod".into(),
+            password: Some("secret".into()),
+            ..Default::default()
+        });
+        config.users.users.push(crate::User {
+            name: "user_one".into(),
+            virtual_of: Some("pgdog".into()),
+            password: Some("secret".into()),
+            ..Default::default()
+        });
+
+        config.check().unwrap();
+        assert_eq!(config.users.users[1].databases, vec!["prod".to_string()]);
+
+        config.check().unwrap();
+        assert_eq!(config.users.users[1].databases, vec!["prod".to_string()]);
     }
 
     #[test]

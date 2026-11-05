@@ -471,6 +471,13 @@
           "format": "uint8",
           "maximum": 255,
           "minimum": 0
+        },
+        "virtual_of": {
+          "description": "Name of the user whose connection pool this user shares. PgDog runs `SET ROLE` to this user's `server_user`, or `name` if not set, before handing it a server connection.\n\n**Note:** Backend and pool settings, e.g. `server_password`, `server_auth` and `pool_size`, are inherited from that user and can't be set here.",
+          "type": [
+            "string",
+            "null"
+          ]
         }
       },
       "additionalProperties": false,

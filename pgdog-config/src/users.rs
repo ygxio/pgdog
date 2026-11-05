@@ -424,6 +424,11 @@ pub struct User {
 
     /// Read-write split algorithm to use for this user.
     pub read_write_split: Option<ReadWriteSplit>,
+
+    /// Name of the user whose connection pool this user shares. PgDog runs `SET ROLE` to this user's `server_user`, or `name` if not set, before handing it a server connection.
+    ///
+    /// **Note:** Backend and pool settings, e.g. `server_password`, `server_auth` and `pool_size`, are inherited from that user and can't be set here.
+    pub virtual_of: Option<String>,
 }
 
 impl User {
@@ -477,6 +482,14 @@ impl User {
 
     pub fn is_external_identity(&self) -> bool {
         self.server_auth.is_external_identity()
+    }
+
+    pub fn is_virtual(&self) -> bool {
+        self.virtual_of.is_some()
+    }
+
+    pub fn role_name(&self) -> &str {
+        self.server_user.as_deref().unwrap_or(&self.name)
     }
 
     pub fn has_database(&self, name: &str) -> bool {

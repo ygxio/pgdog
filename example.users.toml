@@ -48,3 +48,11 @@ password = "pgdog"
 # a client certificate, while mTLS users share the same listener. Defaults to true.
 # Only applies when `tls_client_ca_certificate` is set in pgdog.toml.
 # tls_client_certificate_required = false
+
+# Example: virtual user sharing the connection pool of user "alice".
+# PgDog runs `SET ROLE` to `server_user` (or `name` if not set) before handing it a server connection.
+# [[users]]
+# name = "bob"
+# virtual_of = "alice"
+# password = "hunter2"
+# server_user = "bob_role"
